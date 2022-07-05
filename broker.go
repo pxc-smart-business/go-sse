@@ -2,7 +2,6 @@ package net
 
 import (
 	"bufio"
-	"github.com/gofiber/fiber/v2"
 	"sync"
 	"time"
 )
@@ -12,32 +11,27 @@ type Broker struct {
 
 	clientSessions map[string]map[string]*ClientConnection
 	clientMetadata map[string]ClientMetadata
-	customHeaders  map[string]string
 
 	disconnectCallback func(clientId string, sessionId string)
 }
 
-func NewBroker(customHeaders map[string]string) *Broker {
+func NewBroker() *Broker {
 	return &Broker{
 		clientSessions: make(map[string]map[string]*ClientConnection),
 		clientMetadata: map[string]ClientMetadata{},
-		customHeaders:  customHeaders,
 	}
 }
 
-func (b *Broker) Connect(clientId string, w *bufio.Writer, ctx *fiber.Ctx) (*ClientConnection, error) {
-	return b.ConnectWithHeartBeatInterval(clientId, w, ctx, 15*time.Second)
+func (b *Broker) Connect(clientId string, w *bufio.Writer) (*ClientConnection, error) {
+	return b.ConnectWithHeartBeatInterval(clientId, w, 15*time.Second)
 }
 
-func (b *Broker) ConnectWithHeartBeatInterval(clientId string, w *bufio.Writer, ctx *fiber.Ctx, interval time.Duration) (*ClientConnection, error) {
-	client, err := newClientConnection(clientId, w, ctx)
+func (b *Broker) ConnectWithHeartBeatInterval(clientId string, w *bufio.Writer, interval time.Duration) (*ClientConnection, error) {
+	client, err := newClientConnection(clientId, w)
 	if err != nil {
 		// this should not happen with fiber
-		ctx.Status(fiber.StatusInternalServerError).Send([]byte("Streaming unsupported!"))
 		return nil, NewStreamingUnsupportedError(err.Error())
 	}
-
-	b.setHeaders(ctx)
 
 	b.addClient(clientId, client)
 
@@ -49,12 +43,6 @@ func (b *Broker) ConnectWithHeartBeatInterval(clientId string, w *bufio.Writer, 
 	)
 
 	return client, nil
-}
-
-func (b *Broker) setHeaders(ctx *fiber.Ctx) {
-	for k, v := range b.customHeaders {
-		ctx.Set(k, v)
-	}
 }
 
 func (b *Broker) IsClientPresent(clientId string) bool {

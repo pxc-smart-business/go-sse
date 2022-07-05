@@ -20,12 +20,6 @@ type ClientConnection struct {
 
 // Users should not create instances of client. This should be handled by the SSE broker.
 func newClientConnection(id string, w *bufio.Writer) (*ClientConnection, error) {
-	/*flusher, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
-		return nil, NewStreamingUnsupportedError("ResponseWriter(wrapper) does not support http.Flusher")
-	}*/
-
 	return &ClientConnection{
 		id:             id,
 		sessionId:      uuid.New().String(),
