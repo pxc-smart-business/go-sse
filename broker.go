@@ -1,13 +1,14 @@
 package net
 
 import (
-	"net/http"
+	"bufio"
+	"github.com/gofiber/fiber/v2"
 	"sync"
 	"time"
 )
 
 type Broker struct {
-	mtx      sync.Mutex
+	mtx sync.Mutex
 
 	clientSessions map[string]map[string]*ClientConnection
 	clientMetadata map[string]ClientMetadata
@@ -24,18 +25,19 @@ func NewBroker(customHeaders map[string]string) *Broker {
 	}
 }
 
-func (b *Broker) Connect(clientId string, w http.ResponseWriter, r *http.Request) (*ClientConnection, error) {
-	return b.ConnectWithHeartBeatInterval(clientId, w, r, 15*time.Second)
+func (b *Broker) Connect(clientId string, w *bufio.Writer, ctx *fiber.Ctx) (*ClientConnection, error) {
+	return b.ConnectWithHeartBeatInterval(clientId, w, ctx, 15*time.Second)
 }
 
-func (b *Broker) ConnectWithHeartBeatInterval(clientId string, w http.ResponseWriter, r *http.Request, interval time.Duration) (*ClientConnection, error) {
-	client, err := newClientConnection(clientId, w, r)
+func (b *Broker) ConnectWithHeartBeatInterval(clientId string, w *bufio.Writer, ctx *fiber.Ctx, interval time.Duration) (*ClientConnection, error) {
+	client, err := newClientConnection(clientId, w, ctx)
 	if err != nil {
-		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
+		// this should not happen with fiber
+		ctx.Status(fiber.StatusInternalServerError).Send([]byte("Streaming unsupported!"))
 		return nil, NewStreamingUnsupportedError(err.Error())
 	}
 
-	b.setHeaders(w)
+	b.setHeaders(ctx)
 
 	b.addClient(clientId, client)
 
@@ -49,14 +51,9 @@ func (b *Broker) ConnectWithHeartBeatInterval(clientId string, w http.ResponseWr
 	return client, nil
 }
 
-func (b *Broker) setHeaders(w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Transfer-Encoding", "chunked")
-
+func (b *Broker) setHeaders(ctx *fiber.Ctx) {
 	for k, v := range b.customHeaders {
-		w.Header().Set(k, v)
+		ctx.Set(k, v)
 	}
 }
 

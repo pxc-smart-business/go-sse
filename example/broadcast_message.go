@@ -1,10 +1,10 @@
+//go:build example1
 // +build example1
 
 package main
 
 import (
 	"fmt"
-	"github.com/subchord/go-sse"
 	"log"
 	"net/http"
 	"strconv"

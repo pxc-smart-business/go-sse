@@ -1,9 +1,10 @@
+//go:build connect_with_sse
 // +build connect_with_sse
 
 package main
 
 import (
-	net "github.com/subchord/go-sse"
+	net "github.com/pxc-smart-business/go-sse"
 	"log"
 )
 

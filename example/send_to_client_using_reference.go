@@ -1,10 +1,11 @@
+//go:build example2
 // +build example2
 
 package main
 
 import (
 	"fmt"
-	net "github.com/subchord/go-sse"
+	net "github.com/pxc-smart-business/go-sse"
 	"log"
 	"math/rand"
 	"net/http"

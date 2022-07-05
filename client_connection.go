@@ -1,9 +1,10 @@
 package net
 
 import (
+	"bufio"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
-	"net/http"
 	"time"
 )
 
@@ -13,28 +14,25 @@ type ClientConnection struct {
 	id        string
 	sessionId string
 
-	responseWriter http.ResponseWriter
-	request        *http.Request
-	flusher        http.Flusher
-
-	msg      chan []byte
-	doneChan chan interface{}
+	responseWriter *bufio.Writer
+	ctx            *fiber.Ctx
+	msg            chan []byte
+	doneChan       chan interface{}
 }
 
 // Users should not create instances of client. This should be handled by the SSE broker.
-func newClientConnection(id string, w http.ResponseWriter, r *http.Request) (*ClientConnection, error) {
-	flusher, ok := w.(http.Flusher)
+func newClientConnection(id string, w *bufio.Writer, c *fiber.Ctx) (*ClientConnection, error) {
+	/*flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
 		return nil, NewStreamingUnsupportedError("ResponseWriter(wrapper) does not support http.Flusher")
-	}
+	}*/
 
 	return &ClientConnection{
 		id:             id,
 		sessionId:      uuid.New().String(),
 		responseWriter: w,
-		request:        r,
-		flusher:        flusher,
+		ctx:            c,
 		msg:            make(chan []byte),
 		doneChan:       make(chan interface{}, 1),
 	}, nil
@@ -59,7 +57,7 @@ func (c *ClientConnection) serve(interval time.Duration, onClose func()) {
 writeLoop:
 	for {
 		select {
-		case <-c.request.Context().Done():
+		case <-c.ctx.Context().Done():
 			break writeLoop
 		case <-heartBeat.C:
 			go c.Send(HeartbeatEvent{})
@@ -72,7 +70,7 @@ writeLoop:
 				logrus.Errorf("unable to write to client %v: %v", c.id, err.Error())
 				break writeLoop
 			}
-			c.flusher.Flush()
+			_ = c.responseWriter.Flush()
 		}
 	}
 
